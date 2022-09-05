@@ -90,7 +90,7 @@ app.post('/messages', async (req,res)=>{
     } catch (error) {
         console.log(error);
     }
-})
+});
 
 app.get('/messages',async(req,res)=>{
     const limite = parseInt(req.query.limit);
@@ -98,12 +98,27 @@ app.get('/messages',async(req,res)=>{
     try {
         const mensagens = await db.collection('mensagens').find().toArray();
         const mensagensFiltradas = mensagens.filter(mensagem=>{
-            return mensagem.to === usuario || mensagem.from === usuario || mensagem.to === 'Todos'
+            return mensagem.to === usuario || mensagem.from === usuario || mensagem.to === 'Todos' || mensagem.type === 'message'
         });
         if (limite && limite !== NaN) {
             return res.send(mensagensFiltradas.slice(-limite));
           }
     } catch (error) {
+        console.log(error);
+    }
+});
+
+app.post('/status',(req,res)=>{
+    const usuario = req.headers.user;
+    try {
+        const usuarioVerificado = await db.collection('participantes').findOne({name: usuario});
+        if (!usuarioVerificado){
+            return res.sendStatus(404);
+        }
+        await db.collection('participantes').updateOne({name:usuario},{$set: {lastStatus: Date.now()}});
+        res.sendStatus(200);
+    } catch (error) {
+        console.log(error);
         
     }
 })
