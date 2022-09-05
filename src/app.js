@@ -121,7 +121,18 @@ app.post('/status',(req,res)=>{
         console.log(error);
         
     }
-})
+});
+
+setInterval(async()=>{
+    const tempoMenos10 = Date.now() - 10000;
+    try {
+        const participantes = await db.collection('participantes').find().toArray();
+        const participantesInativos = participantes.filter(participante => participante.lastStatus <= tempoMenos10);
+        await participantsCollection.deleteMany({ lastStatus: { $lte: tempoMenos10 } });
+    } catch (error) {
+        console.log(error);
+    }
+}, 15000);
 
 app.listen(porta,()=>{
     console.log(`Servidor aberto na porta ${chalk.blue(porta)}`)
