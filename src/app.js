@@ -84,11 +84,27 @@ app.post('/messages', async (req,res)=>{
             to: mensagem.to,
             text: mensagem.text,
             type: mensagem.type,
-            time: dayjs().format()('HH:mm:ss')
+            time: dayjs().format('HH:mm:ss')
         })
         res.sendStatus(201);
     } catch (error) {
         console.log(error);
+    }
+})
+
+app.get('/messages',async(req,res)=>{
+    const limite = parseInt(req.query.limit);
+    const usuario = req.headers.user;
+    try {
+        const mensagens = await db.collection('mensagens').find().toArray();
+        const mensagensFiltradas = mensagens.filter(mensagem=>{
+            return mensagem.to === usuario || mensagem.from === usuario || mensagem.to === 'Todos'
+        });
+        if (limite && limite !== NaN) {
+            return res.send(mensagensFiltradas.slice(-limite));
+          }
+    } catch (error) {
+        
     }
 })
 
