@@ -11,36 +11,50 @@ app.use(cors());
 app.use(express.json());
 dotenv.config();
 const porta = process.env.PORTA || 5000;
+const banco = process.env.BANCO;
 
 const mongoClient = new MongoClient(process.env.MONGO_URI);
 let db;
 
 mongoClient.connect().then(() => {
 	db = mongoClient.db(process.env.BANCO);
-    console.log(`Conectado ao MongoDB`);
+    console.log(`Conectado ao MongoDB no Database ${chalk.blue(banco)}`);
 });
 mongoClient.connect().catch((e) => {
     console.log(`Erro ao tentar conexão com o MongoDB`);
     console.log(e);
 });
 
-app.get('/participants', async (req,res) => {
+app.post('/participants', async (req,res) => {
     const participante = req.body;
-    const participanteSchema = joi.object({name: joi.string().required()})
-    const {error} = participanteSchema(participante)
+    const participanteSchema = joi.object({name: joi.string().required()});
+    const {error} = participanteSchema.validate(participante)
     if(error){
         res.status(422).send("Nome deve ser uma string não vazia");
         return;
     }
-    const nomeRepetido = await db.collection("participantes").findOne({name: participante.name});
-    if(nomeRepetido){
-        res.status(409).send("Esse nome já está sendo utilizado");
-        return;
+    try {
+        const nomeRepetido = await db.collection("participantes").findOne({name: participante.name});
+        if(nomeRepetido){
+            res.status(409).send("Esse nome já está sendo utilizado");
+            return;
+        }
+        await db.collection("participantes").insertOne({name: participante.name, lastStatus: Date.now()});
+        await db.collection("mensagens").insertOne({from: participante.name, to: 'Todos', text: 'entra na sala...', type: 'status', time: dayjs().format('HH:MM:SS')});
+        res.sendStatus(201);
+    } catch (error) {
+        console.log(error);
     }
-    await db.collection("participantes").insertOne({name: participante.name, lastStatus: Date.now()});
-    await db.collection("mensagens").insertOne({from: participante.name, to: 'Todos', text: 'entra na sala...', type: 'status', time: dayjs().format('HH:MM:SS')});
-    res.sendStatus(201);
 });
+
+app.get('/participants', async (req, res) => {
+    try {
+      const participantes = await db.collection('participantes').find().toArray();
+      res.send(participantes);
+    } catch (error) {
+      console.error({ error });
+    }
+  });
 
 app.listen(porta,()=>{
     console.log(`Servidor aberto na porta ${chalk.blue(porta)}`)
